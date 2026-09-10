@@ -1,6 +1,14 @@
 package com.khatanow.app.util
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +27,7 @@ data class UpdateInfo(
 
 object UpdateChecker {
     private const val VERSION_URL = "https://aryn247.github.io/Self-Portfolio/version.json"
+    private const val CHANNEL_ID = "khata_now_updates"
     private val _updateState = MutableStateFlow<UpdateInfo?>(null)
     val updateState: StateFlow<UpdateInfo?> = _updateState
 
@@ -42,18 +51,59 @@ object UpdateChecker {
                     val notes = json.optString("releaseNotes", "New performance and feature updates available!")
 
                     if (versionCode > currentVersionCode) {
-                        _updateState.value = UpdateInfo(
+                        val info = UpdateInfo(
                             hasUpdate = true,
                             latestVersionCode = versionCode,
                             latestVersionName = versionName,
                             downloadUrl = downloadUrl,
                             releaseNotes = notes
                         )
+                        _updateState.value = info
+
+                        // Send System Notification to Phone Status Bar
+                        showSystemNotification(context, info)
                     }
                 }
             } catch (ignored: Exception) {
-                // Fails silently if offline or network unavailable to avoid consuming battery/data
+                // Fails silently if offline or network unavailable to save data
             }
         }
+    }
+
+    private fun showSystemNotification(context: Context, updateInfo: UpdateInfo) {
+        try {
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    CHANNEL_ID,
+                    "App Updates",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "Notifications for KhataNow app updates"
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(updateInfo.downloadUrl))
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle("✨ KhataNow Update Available (v${updateInfo.latestVersionName})")
+                .setContentText("Tap to download the new version of KhataNow.")
+                .setStyle(NotificationCompat.BigTextStyle().bigText("${updateInfo.releaseNotes}\nTap to download."))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+
+            notificationManager.notify(1001, notification)
+        } catch (ignored: Exception) {}
     }
 }
