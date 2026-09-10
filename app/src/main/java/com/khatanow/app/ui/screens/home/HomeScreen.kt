@@ -331,8 +331,8 @@ fun HomeScreen(
                 showVoiceModal = false
                 viewModel.resetVoiceState()
             },
-            onConfirm = { cust, custName, prod, prodName, qty ->
-                viewModel.confirmVoiceTransaction(cust, custName, prod, prodName, qty)
+            onConfirm = { cust, custName, items ->
+                viewModel.confirmVoiceTransaction(cust, custName, items)
                 showVoiceModal = false
             },
             onManualFallback = {

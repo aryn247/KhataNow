@@ -12,6 +12,7 @@ import com.khatanow.app.data.repository.DeviceRepository
 import com.khatanow.app.data.repository.ProductRepository
 import com.khatanow.app.data.repository.TransactionRepository
 import com.khatanow.app.domain.voice.LocalVoiceParser
+import com.khatanow.app.domain.voice.ParsedVoiceItem
 import com.khatanow.app.domain.voice.SpeechRecognizerManager
 import com.khatanow.app.domain.voice.SpeechState
 import com.khatanow.app.domain.voice.VoiceParseResult
@@ -69,6 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
+            // Checks for updates against currentVersionCode = 1 (triggers v1.0.1 notification)
             UpdateChecker.checkForUpdates(application, currentVersionCode = 1)
         }
     }
@@ -79,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startVoiceRecording() {
         _parseResult.value = null
-        speechManager.startListening(currentLanguage.value.code)
+        speechManager.startListening("en-IN")
     }
 
     fun stopVoiceRecording() {
@@ -100,29 +102,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Auto-creates missing Customer or Product on-the-fly when confirming voice credit!
+    // Auto-creates missing Customer & Products on-the-fly and saves multi-item credit transactions!
     fun confirmVoiceTransaction(
         customer: CustomerEntity?,
         candidateCustomerName: String,
-        product: ProductEntity?,
-        candidateProductName: String,
-        quantity: Int
+        items: List<ParsedVoiceItem>
     ) {
         viewModelScope.launch {
+            if (items.isEmpty()) return@launch
+
             // 1. Auto-create customer if missing
             val targetCustomer = customer ?: customerRepository.addCustomer(candidateCustomerName.ifEmpty { "Customer" })
 
-            // 2. Auto-create product if missing
-            val targetProduct = product ?: productRepository.addProduct(candidateProductName.ifEmpty { "Product" })
-
-            // 3. Save credit transaction
-            transactionRepository.addTransaction(
-                customerId = targetCustomer.id,
-                productId = targetProduct.id,
-                quantity = quantity
-            )
+            // 2. Save all parsed items
+            for (item in items) {
+                val targetProduct = item.matchedProduct ?: productRepository.addProduct(item.candidateProductName.ifEmpty { "Product" })
+                transactionRepository.addTransaction(
+                    customerId = targetCustomer.id,
+                    productId = targetProduct.id,
+                    quantity = item.quantity
+                )
+            }
             resetVoiceState()
-            _uiMessage.value = "Transaction saved for ${targetCustomer.name}!"
+            _uiMessage.value = "${items.size} credit ${if (items.size > 1) "entries" else "entry"} saved for ${targetCustomer.name}!"
         }
     }
 

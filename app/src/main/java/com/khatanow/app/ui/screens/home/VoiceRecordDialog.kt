@@ -18,11 +18,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
@@ -41,7 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.khatanow.app.data.local.entities.CustomerEntity
 import com.khatanow.app.data.local.entities.ProductEntity
+import com.khatanow.app.domain.voice.ParsedVoiceItem
 import com.khatanow.app.domain.voice.SpeechState
 import com.khatanow.app.domain.voice.VoiceParseResult
 import com.khatanow.app.ui.theme.GreenPrimary
@@ -69,7 +73,7 @@ fun VoiceRecordDialog(
     currentLanguage: AppLanguage,
     onLanguageToggle: (AppLanguage) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (CustomerEntity?, String, ProductEntity?, String, Int) -> Unit,
+    onConfirm: (CustomerEntity?, String, List<ParsedVoiceItem>) -> Unit,
     onManualFallback: () -> Unit
 ) {
     AlertDialog(
@@ -162,11 +166,9 @@ fun VoiceRecordDialog(
                         }
                     }
                 } else {
-                    // Parsed Confirmation Mode with Auto-Create capability
+                    // Parsed Confirmation Mode supporting Multi-Item entries
                     ConfirmationCardContent(
                         parseResult = parseResult,
-                        allCustomers = customers,
-                        allProducts = products,
                         onConfirm = onConfirm,
                         onEditManual = onManualFallback
                     )
@@ -223,18 +225,12 @@ fun PulsingMicIcon() {
 @Composable
 fun ConfirmationCardContent(
     parseResult: VoiceParseResult,
-    allCustomers: List<CustomerEntity>,
-    allProducts: List<ProductEntity>,
-    onConfirm: (CustomerEntity?, String, ProductEntity?, String, Int) -> Unit,
+    onConfirm: (CustomerEntity?, String, List<ParsedVoiceItem>) -> Unit,
     onEditManual: () -> Unit
 ) {
     var selectedCustomer by remember { mutableStateOf(parseResult.matchedCustomer) }
     var candidateCustomerName by remember { mutableStateOf(parseResult.candidateCustomerName) }
-
-    var selectedProduct by remember { mutableStateOf(parseResult.matchedProduct) }
-    var candidateProductName by remember { mutableStateOf(parseResult.candidateProductName) }
-
-    var quantity by remember { mutableIntStateOf(parseResult.quantity) }
+    val itemsList = remember { mutableStateListOf<ParsedVoiceItem>().apply { addAll(parseResult.items) } }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Card(
@@ -242,9 +238,9 @@ fun ConfirmationCardContent(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(modifier = Modifier.padding(14.dp)) {
                 Text("Spoken: \"${parseResult.rawText}\"", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // Customer Field with On-The-Fly Auto-Create
                 Text("CUSTOMER", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
@@ -255,18 +251,13 @@ fun ConfirmationCardContent(
                         fontWeight = FontWeight.Bold
                     )
                 } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    OutlinedTextField(
+                        value = candidateCustomerName,
+                        onValueChange = { candidateCustomerName = it },
+                        label = { Text("Customer Name") },
+                        singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = candidateCustomerName,
-                            onValueChange = { candidateCustomerName = it },
-                            label = { Text("Customer Name") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    )
                     Text(
                         text = "✨ Auto-saves to customer list",
                         style = MaterialTheme.typography.bodySmall,
@@ -277,67 +268,70 @@ fun ConfirmationCardContent(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Product Field with On-The-Fly Auto-Create
-                Text("PRODUCT", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
-                if (selectedProduct != null) {
-                    Text(
-                        text = selectedProduct!!.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = candidateProductName,
-                            onValueChange = { candidateProductName = it },
-                            label = { Text("Product Name") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Text(
-                        text = "✨ Auto-saves to product list",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = GreenPrimary,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
+                // Multi-Item List Header
+                Text("PARSED ITEMS (${itemsList.size})", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
+                Spacer(modifier = Modifier.height(4.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
+                itemsList.forEachIndexed { index, item ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = item.matchedProduct?.name ?: item.candidateProductName,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                if (item.matchedProduct == null) {
+                                    Text("✨ Auto-saves product", style = MaterialTheme.typography.bodySmall, color = GreenPrimary)
+                                }
+                            }
 
-                // Quantity Selector
-                Text("QUANTITY", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    IconButton(
-                        onClick = { if (quantity > 1) quantity-- },
-                        modifier = Modifier.background(Color.White, CircleShape)
-                    ) {
-                        Icon(Icons.Default.Remove, contentDescription = "Decrease")
-                    }
-                    Text(
-                        text = "$quantity",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 24.dp)
-                    )
-                    IconButton(
-                        onClick = { quantity++ },
-                        modifier = Modifier.background(Color.White, CircleShape)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Increase")
+                            // Quantity Selector per Item
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        if (item.quantity > 1) {
+                                            itemsList[index] = item.copy(quantity = item.quantity - 1)
+                                        }
+                                    },
+                                    modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(16.dp))
+                                }
+                                Text(
+                                    text = "${item.quantity}",
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp)
+                                )
+                                IconButton(
+                                    onClick = { itemsList[index] = item.copy(quantity = item.quantity + 1) },
+                                    modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(16.dp))
+                                }
+                                if (itemsList.size > 1) {
+                                    IconButton(
+                                        onClick = { itemsList.removeAt(index) },
+                                        modifier = Modifier.size(32.dp).padding(start = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Remove Item", tint = Color.Red)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Action Buttons
         Button(
@@ -345,19 +339,22 @@ fun ConfirmationCardContent(
                 onConfirm(
                     selectedCustomer,
                     candidateCustomerName,
-                    selectedProduct,
-                    candidateProductName,
-                    quantity
+                    itemsList
                 )
             },
+            enabled = itemsList.isNotEmpty(),
             colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp)
+                .height(52.dp)
         ) {
             Icon(Icons.Default.Check, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("✓ CONFIRM CREDIT", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = if (itemsList.size > 1) "✓ CONFIRM ${itemsList.size} ITEMS" else "✓ CONFIRM CREDIT",
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
 
         Spacer(modifier = Modifier.height(8.dp))

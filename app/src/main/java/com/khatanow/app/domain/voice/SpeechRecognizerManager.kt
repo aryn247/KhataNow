@@ -27,7 +27,7 @@ class SpeechRecognizerManager(private val context: Context) {
         return SpeechRecognizer.isRecognitionAvailable(context)
     }
 
-    fun startListening(languageCode: String = "hi-IN") {
+    fun startListening(languageCode: String = "en-IN") {
         if (!isAvailable()) {
             _speechState.value = SpeechState.Error("Speech recognition is not available on this device.")
             return
@@ -86,10 +86,11 @@ class SpeechRecognizerManager(private val context: Context) {
                 })
             }
 
+            // Always use en-IN for speech recognition so spoken Hinglish/English outputs standard Latin text
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageCode)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageCode)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-IN")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "en-IN")
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
             }
