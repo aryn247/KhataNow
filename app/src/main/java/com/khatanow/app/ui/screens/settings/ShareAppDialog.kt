@@ -26,7 +26,7 @@ import com.khatanow.app.util.QRCodeGenerator
 
 @Composable
 fun ShareAppDialog(
-    downloadUrl: String = "https://khatanow.app/download.apk",
+    downloadUrl: String = "https://aryn247.github.io/Self-Portfolio/KhataNow.apk",
     onDismiss: () -> Unit
 ) {
     val qrBitmap = remember(downloadUrl) {
