@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">KhataNow</string>
+    <string name="app_subtitle">Local-First Voice Credit Ledger</string>
+    <string name="record_credit">RECORD CREDIT</string>
+    <string name="manual_entry">+ Manual Entry</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_customers">Customers</string>
+    <string name="nav_products">Products</string>
+    <string name="nav_history">History</string>
+    <string name="nav_sync">Sync</string>
+    <string name="nav_settings">Settings</string>
+</resources>
