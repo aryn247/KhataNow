@@ -1,5 +1,7 @@
 package com.khatanow.app.ui.screens.home
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,11 +20,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,7 +45,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.khatanow.app.data.local.entities.TransactionWithDetails
@@ -50,20 +56,24 @@ import com.khatanow.app.ui.screens.customers.AddEditCustomerDialog
 import com.khatanow.app.ui.screens.products.AddEditProductDialog
 import com.khatanow.app.ui.theme.GreenPrimary
 import com.khatanow.app.ui.theme.MicAccent
+import com.khatanow.app.util.AppLanguage
 import com.khatanow.app.util.DateFormatter
 
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
     onNavigateToManual: () -> Unit,
-    onNavigateToCustomers: () -> Unit,
-    onNavigateToProducts: () -> Unit
+    onNavigateToCustomers: () -> Unit = {},
+    onNavigateToProducts: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val customers by viewModel.customers.collectAsState()
     val products by viewModel.products.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val speechState by viewModel.speechState.collectAsState()
     val parseResult by viewModel.parseResult.collectAsState()
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val updateInfo by viewModel.updateInfo.collectAsState()
 
     var showVoiceModal by remember { mutableStateOf(false) }
     var showAddCustomerModal by remember { mutableStateOf(false) }
@@ -75,19 +85,101 @@ fun HomeScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // App Title Banner
-        Text(
-            text = "KhataNow",
-            style = MaterialTheme.typography.headlineLarge,
-            color = GreenPrimary
-        )
-        Text(
-            text = "Local-First Voice Credit Ledger",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
-        )
+        // Top Bar Header with Language Selector
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "KhataNow",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = GreenPrimary
+                )
+                Text(
+                    text = if (currentLanguage == AppLanguage.HINDI) "बोल खाता — लोकल ऐप" else "Local-First Voice Credit Ledger",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.clickable {
+                    val nextLang = if (currentLanguage == AppLanguage.ENGLISH) AppLanguage.HINDI else AppLanguage.ENGLISH
+                    viewModel.setAppLanguage(nextLang)
+                }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = currentLanguage.displayName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = GreenPrimary
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Lightweight Universal Update Notification Banner
+        if (updateInfo?.hasUpdate == true) {
+            val update = updateInfo!!
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Update, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                        Column(modifier = Modifier.padding(start = 10.dp)) {
+                            Text(
+                                text = "✨ Update Available (v${update.latestVersionName})",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = update.releaseNotes,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(update.downloadUrl))
+                            context.startActivity(intent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Update", fontSize = 13.sp)
+                    }
+                }
+            }
+        }
 
         // First Boot Setup Guidance (If DB is empty)
         if (customers.isEmpty() || products.isEmpty()) {
@@ -97,10 +189,10 @@ fun HomeScreen(
                 onAddCustomer = { showAddCustomerModal = true },
                 onAddProduct = { showAddProductModal = true }
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // Main Voice Action Button (Rush-Hour Primary CTA)
+        // Main Voice Action Button
         ElevatedCard(
             onClick = {
                 showVoiceModal = true
@@ -110,7 +202,7 @@ fun HomeScreen(
             shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(130.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -122,54 +214,54 @@ fun HomeScreen(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(76.dp)
+                        .size(72.dp)
                         .background(Color.White, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Mic,
                         contentDescription = "Voice Record",
                         tint = MicAccent,
-                        modifier = Modifier.size(48.dp)
+                        modifier = Modifier.size(44.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
-                        text = "🎤 RECORD CREDIT",
-                        fontSize = 24.sp,
+                        text = if (currentLanguage == AppLanguage.HINDI) "🎤 बोलकर खाता लिखें" else "🎤 RECORD CREDIT",
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White
                     )
                     Text(
-                        text = "Tap & speak transaction",
-                        fontSize = 15.sp,
+                        text = if (currentLanguage == AppLanguage.HINDI) "दबाएं और बोलें (उदा: गुणगुण 5 चिप्स)" else "Tap & speak transaction",
+                        fontSize = 14.sp,
                         color = Color.White.copy(alpha = 0.9f)
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Manual Entry Fallback Button
         OutlinedButton(
             onClick = onNavigateToManual,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(54.dp),
+                .height(50.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
             Icon(Icons.Default.Edit, contentDescription = null, tint = GreenPrimary)
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "+ Manual Entry",
-                fontSize = 18.sp,
+                text = if (currentLanguage == AppLanguage.HINDI) "+ हाथ से लिखें (Manual)" else "+ Manual Entry",
+                fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 color = GreenPrimary
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Recent Credit Transactions Header
         Row(
@@ -178,11 +270,11 @@ fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Recent Transactions",
+                text = if (currentLanguage == AppLanguage.HINDI) "हाल के लेनदेन" else "Recent Transactions",
                 style = MaterialTheme.typography.titleLarge
             )
             Text(
-                text = "${transactions.size} records",
+                text = "${transactions.size} entries",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.Gray
             )
@@ -193,14 +285,12 @@ fun HomeScreen(
         if (transactions.isEmpty()) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(20.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
@@ -210,7 +300,7 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Tap the microphone above or use Manual Entry to add your shop's first credit entry.",
+                        text = "Tap the microphone above or use Manual Entry to record credit.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )
@@ -235,12 +325,14 @@ fun HomeScreen(
             parseResult = parseResult,
             customers = customers,
             products = products,
+            currentLanguage = currentLanguage,
+            onLanguageToggle = { lang -> viewModel.setAppLanguage(lang) },
             onDismiss = {
                 showVoiceModal = false
                 viewModel.resetVoiceState()
             },
-            onConfirm = { customer, product, qty ->
-                viewModel.confirmVoiceTransaction(customer, product, qty)
+            onConfirm = { cust, custName, prod, prodName, qty ->
+                viewModel.confirmVoiceTransaction(cust, custName, prod, prodName, qty)
                 showVoiceModal = false
             },
             onManualFallback = {
@@ -294,7 +386,7 @@ fun SetupWarningCard(
                 color = Color(0xFFE65100)
             )
             Text(
-                text = "Voice parsing relies on your local Customers and Products database. Add your shop's items to start.",
+                text = "You can add items below or simply speak transactions directly (e.g. 'Gungun 5 chips') to auto-save them on-the-fly!",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF5D4037),
                 modifier = Modifier.padding(vertical = 4.dp)
@@ -339,7 +431,7 @@ fun TransactionItemRow(item: TransactionWithDetails) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -347,16 +439,20 @@ fun TransactionItemRow(item: TransactionWithDetails) {
                 Text(
                     text = item.customerName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "${item.productName} × ${item.quantity} ${item.productUnit ?: ""}".trim(),
                     style = MaterialTheme.typography.bodyLarge,
                     color = GreenPrimary,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            Column(horizontalAlignment = Alignment.End) {
+            Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 8.dp)) {
                 Text(
                     text = DateFormatter.formatTime(item.timestamp),
                     style = MaterialTheme.typography.bodyMedium,

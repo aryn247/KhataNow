@@ -15,12 +15,15 @@ import com.khatanow.app.domain.voice.LocalVoiceParser
 import com.khatanow.app.domain.voice.SpeechRecognizerManager
 import com.khatanow.app.domain.voice.SpeechState
 import com.khatanow.app.domain.voice.VoiceParseResult
+import com.khatanow.app.util.AppLanguage
 import com.khatanow.app.util.DeviceUtils
+import com.khatanow.app.util.LanguageManager
+import com.khatanow.app.util.UpdateChecker
+import com.khatanow.app.util.UpdateInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -35,6 +38,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val speechManager = SpeechRecognizerManager(application)
     private val voiceParser = LocalVoiceParser()
+
+    val currentLanguage: StateFlow<AppLanguage> = LanguageManager.currentLanguage
+    val updateInfo: StateFlow<UpdateInfo?> = UpdateChecker.updateState
 
     val customers: StateFlow<List<CustomerEntity>> = customerRepository.allCustomers
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
@@ -54,6 +60,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val uiMessage: StateFlow<String?> = _uiMessage.asStateFlow()
 
     init {
+        LanguageManager.init(application)
         viewModelScope.launch {
             speechState.collect { state ->
                 if (state is SpeechState.FinalResult) {
@@ -61,11 +68,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+        viewModelScope.launch {
+            UpdateChecker.checkForUpdates(application, currentVersionCode = 1)
+        }
+    }
+
+    fun setAppLanguage(language: AppLanguage) {
+        LanguageManager.setLanguage(getApplication(), language)
     }
 
     fun startVoiceRecording() {
         _parseResult.value = null
-        speechManager.startListening()
+        speechManager.startListening(currentLanguage.value.code)
     }
 
     fun stopVoiceRecording() {
@@ -86,19 +100,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // Auto-creates missing Customer or Product on-the-fly when confirming voice credit!
     fun confirmVoiceTransaction(
-        customer: CustomerEntity,
-        product: ProductEntity,
+        customer: CustomerEntity?,
+        candidateCustomerName: String,
+        product: ProductEntity?,
+        candidateProductName: String,
         quantity: Int
     ) {
         viewModelScope.launch {
+            // 1. Auto-create customer if missing
+            val targetCustomer = customer ?: customerRepository.addCustomer(candidateCustomerName.ifEmpty { "Customer" })
+
+            // 2. Auto-create product if missing
+            val targetProduct = product ?: productRepository.addProduct(candidateProductName.ifEmpty { "Product" })
+
+            // 3. Save credit transaction
             transactionRepository.addTransaction(
-                customerId = customer.id,
-                productId = product.id,
+                customerId = targetCustomer.id,
+                productId = targetProduct.id,
                 quantity = quantity
             )
             resetVoiceState()
-            _uiMessage.value = "Transaction saved for ${customer.name}!"
+            _uiMessage.value = "Transaction saved for ${targetCustomer.name}!"
         }
     }
 

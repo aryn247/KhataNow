@@ -1,5 +1,9 @@
 package com.khatanow.app.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,10 +13,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,10 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.khatanow.app.ui.MainViewModel
 import com.khatanow.app.ui.theme.GreenPrimary
+import com.khatanow.app.util.AppLanguage
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val currentLanguage by viewModel.currentLanguage.collectAsState()
+    val updateInfo by viewModel.updateInfo.collectAsState()
     var showShareModal by remember { mutableStateOf(false) }
 
     Column(
@@ -46,12 +58,63 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .padding(16.dp)
     ) {
         Text(
-            text = "App Settings",
+            text = if (currentLanguage == AppLanguage.HINDI) "ऐप सेटिंग्स (Settings)" else "App Settings",
             style = MaterialTheme.typography.headlineMedium,
             color = GreenPrimary
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Language Switcher Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(32.dp))
+                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                        Text(
+                            text = if (currentLanguage == AppLanguage.HINDI) "भाषा (App Language)" else "App Language",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = currentLanguage.displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { viewModel.setAppLanguage(AppLanguage.ENGLISH) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (currentLanguage == AppLanguage.ENGLISH) GreenPrimary else Color.LightGray
+                        )
+                    ) {
+                        Text("English")
+                    }
+                    Button(
+                        onClick = { viewModel.setAppLanguage(AppLanguage.HINDI) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (currentLanguage == AppLanguage.HINDI) GreenPrimary else Color.LightGray
+                        )
+                    ) {
+                        Text("हिंदी")
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Device Identity Card
         Card(
@@ -68,9 +131,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     imageVector = Icons.Default.Smartphone,
                     contentDescription = null,
                     tint = GreenPrimary,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(32.dp)
                 )
-                Column(modifier = Modifier.padding(start = 16.dp)) {
+                Column(modifier = Modifier.padding(start = 12.dp)) {
                     Text("Local Device ID", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                     Text(
                         text = viewModel.deviceId,
@@ -81,16 +144,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Share App Button
+        // Share App Card
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Share App with Employees / Friends",
+                    text = if (currentLanguage == AppLanguage.HINDI) "दूसरों को ऐप शेयर करें (Share App)" else "Share App with Employees / Friends",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -113,11 +176,12 @@ fun SettingsScreen(viewModel: MainViewModel) {
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Privacy & Architecture Notice
+        // Bilingual Privacy Guarantee Card
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -127,18 +191,26 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    imageVector = Icons.Default.Info,
+                    imageVector = Icons.Default.Lock,
                     contentDescription = null,
                     tint = GreenPrimary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(28.dp)
                 )
                 Column(modifier = Modifier.padding(start = 12.dp)) {
-                    Text("Local-First Privacy Guarantee", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "• All customers, products, and credit transactions are stored locally on your device.\n• No cloud servers, no mandatory login, no automatic sync.\n• Internet is NOT required for core functionality.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.DarkGray,
-                        modifier = Modifier.padding(top = 4.dp)
+                        text = if (currentLanguage == AppLanguage.HINDI) "🔒 100% व्यक्तिगत और सुरक्षित (100% Private)" else "🔒 100% Personal & Private App",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = GreenPrimary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (currentLanguage == AppLanguage.HINDI)
+                            "यह आपकी व्यक्तिगत ऐप है। आपकी दुकान का सारा ग्राहक, सामान और क्रेडिट डेटा केवल आपके फोन में सुरक्षित रहता है। आपका कोई भी डेटा किसी सर्वर या इंटरनेट पर कभी नहीं भेजा जाता है।"
+                        else
+                            "This is your personal app. All your shop's customer, product, and credit data stays completely on your phone. No data is ever collected, uploaded, or sent to external servers.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF1B5E20)
                     )
                 }
             }

@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
@@ -34,6 +36,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,6 +58,7 @@ import com.khatanow.app.data.local.entities.ProductEntity
 import com.khatanow.app.domain.voice.SpeechState
 import com.khatanow.app.domain.voice.VoiceParseResult
 import com.khatanow.app.ui.theme.GreenPrimary
+import com.khatanow.app.util.AppLanguage
 
 @Composable
 fun VoiceRecordDialog(
@@ -62,25 +66,56 @@ fun VoiceRecordDialog(
     parseResult: VoiceParseResult?,
     customers: List<CustomerEntity>,
     products: List<ProductEntity>,
+    currentLanguage: AppLanguage,
+    onLanguageToggle: (AppLanguage) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (CustomerEntity, ProductEntity, Int) -> Unit,
+    onConfirm: (CustomerEntity?, String, ProductEntity?, String, Int) -> Unit,
     onManualFallback: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text(
-                text = if (parseResult != null) "Confirm Voice Transaction" else "Listening for Voice Credit",
-                style = MaterialTheme.typography.titleLarge,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (parseResult != null) "Confirm Credit Entry" else "Voice Credit Record",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                // Language Switcher Badge (EN vs HI)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.clickable {
+                        val nextLang = if (currentLanguage == AppLanguage.ENGLISH) AppLanguage.HINDI else AppLanguage.ENGLISH
+                        onLanguageToggle(nextLang)
+                    }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp), tint = GreenPrimary)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (currentLanguage == AppLanguage.ENGLISH) "EN" else "हिंदी",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = GreenPrimary
+                        )
+                    }
+                }
+            }
         },
         text = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(8.dp),
+                    .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 if (parseResult == null) {
@@ -90,17 +125,11 @@ fun VoiceRecordDialog(
                             PulsingMicIcon()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Speak now...",
+                                text = if (currentLanguage == AppLanguage.HINDI) "बोलिए (उदा: गुणगुण 5 चिप्स)..." else "Speak now (e.g., Gungun 5 chips)...",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
-                                color = GreenPrimary
-                            )
-                            Text(
-                                text = "Example format:\n'Customer 5 Product'",
-                                style = MaterialTheme.typography.bodySmall,
-                                textAlign = TextAlign.Center,
-                                color = Color.Gray,
-                                modifier = Modifier.padding(top = 8.dp)
+                                color = GreenPrimary,
+                                textAlign = TextAlign.Center
                             )
                         }
                         is SpeechState.PartialResult -> {
@@ -116,11 +145,11 @@ fun VoiceRecordDialog(
                         is SpeechState.Error -> {
                             Text(
                                 text = "⚠️ ${speechState.message}",
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = onManualFallback,
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
@@ -129,11 +158,11 @@ fun VoiceRecordDialog(
                             }
                         }
                         else -> {
-                            Text("Initializing speech recognition...")
+                            Text("Initializing microphone...")
                         }
                     }
                 } else {
-                    // Parsed Confirmation Mode
+                    // Parsed Confirmation Mode with Auto-Create capability!
                     ConfirmationCardContent(
                         parseResult = parseResult,
                         allCustomers = customers,
@@ -148,7 +177,7 @@ fun VoiceRecordDialog(
         dismissButton = {
             if (parseResult == null) {
                 TextButton(onClick = onDismiss) {
-                    Text("Cancel", fontSize = 18.sp)
+                    Text("Cancel", fontSize = 16.sp)
                 }
             }
         }
@@ -171,21 +200,21 @@ fun PulsingMicIcon() {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(90.dp)
+            .size(80.dp)
             .scale(scale)
             .background(Color(0xFFFFEBEE), CircleShape)
     ) {
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(70.dp)
+                .size(60.dp)
                 .background(Color(0xFFD32F2F), CircleShape)
         ) {
             Icon(
                 imageVector = Icons.Default.Mic,
                 contentDescription = "Listening",
                 tint = Color.White,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(36.dp)
             )
         }
     }
@@ -196,11 +225,15 @@ fun ConfirmationCardContent(
     parseResult: VoiceParseResult,
     allCustomers: List<CustomerEntity>,
     allProducts: List<ProductEntity>,
-    onConfirm: (CustomerEntity, ProductEntity, Int) -> Unit,
+    onConfirm: (CustomerEntity?, String, ProductEntity?, String, Int) -> Unit,
     onEditManual: () -> Unit
 ) {
-    var selectedCustomer by remember { mutableStateOf(parseResult.matchedCustomer ?: allCustomers.firstOrNull()) }
-    var selectedProduct by remember { mutableStateOf(parseResult.matchedProduct ?: allProducts.firstOrNull()) }
+    var selectedCustomer by remember { mutableStateOf(parseResult.matchedCustomer) }
+    var candidateCustomerName by remember { mutableStateOf(parseResult.candidateCustomerName) }
+
+    var selectedProduct by remember { mutableStateOf(parseResult.matchedProduct) }
+    var candidateProductName by remember { mutableStateOf(parseResult.candidateProductName) }
+
     var quantity by remember { mutableIntStateOf(parseResult.quantity) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -211,36 +244,76 @@ fun ConfirmationCardContent(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Spoken: \"${parseResult.rawText}\"", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Customer Field
+                // Customer Field with On-The-Fly Auto-Create
                 Text("CUSTOMER", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
-                Text(
-                    text = selectedCustomer?.name ?: "⚠️ Not Found (Select in Edit)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                if (selectedCustomer != null) {
+                    Text(
+                        text = selectedCustomer!!.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = candidateCustomerName,
+                            onValueChange = { candidateCustomerName = it },
+                            label = { Text("New Customer Name") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        text = "✨ Will auto-save to customer directory",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GreenPrimary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Product Field
+                // Product Field with On-The-Fly Auto-Create
                 Text("PRODUCT", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
-                Text(
-                    text = selectedProduct?.name ?: "⚠️ Not Found (Select in Edit)",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                if (selectedProduct != null) {
+                    Text(
+                        text = selectedProduct!!.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = candidateProductName,
+                            onValueChange = { candidateProductName = it },
+                            label = { Text("New Product Name") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Text(
+                        text = "✨ Will auto-save to product inventory",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = GreenPrimary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // Quantity Selector
                 Text("QUANTITY", style = MaterialTheme.typography.labelMedium, color = GreenPrimary)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     IconButton(
                         onClick = { if (quantity > 1) quantity-- },
@@ -264,39 +337,40 @@ fun ConfirmationCardContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Action Buttons
         Button(
             onClick = {
-                val cust = selectedCustomer
-                val prod = selectedProduct
-                if (cust != null && prod != null) {
-                    onConfirm(cust, prod, quantity)
-                }
+                onConfirm(
+                    selectedCustomer,
+                    candidateCustomerName,
+                    selectedProduct,
+                    candidateProductName,
+                    quantity
+                )
             },
-            enabled = selectedCustomer != null && selectedProduct != null,
             colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(54.dp)
         ) {
             Icon(Icons.Default.Check, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("✓ CONFIRM CREDIT", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedButton(
             onClick = onEditManual,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .height(46.dp)
         ) {
             Icon(Icons.Default.Edit, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("✏ Edit Manually", fontSize = 16.sp)
+            Text("✏ Edit Manually", fontSize = 15.sp)
         }
     }
 }
