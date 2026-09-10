@@ -10,12 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -26,7 +22,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -60,33 +55,34 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
             .padding(16.dp)
     ) {
         Text(
-            text = "Boss / Employee Device Sync",
+            text = "Device Sync (Boss / Employee)",
             style = MaterialTheme.typography.headlineMedium,
-            color = GreenPrimary
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Text(
-            text = "Local Offline Device-to-Device Synchronization",
+            text = "Offline device-to-device shop data synchronization",
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Main Sync Action Card
+        // Main Sync Action Card with High Contrast & Unclipped Buttons
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
                     imageVector = Icons.Default.Sync,
                     contentDescription = null,
                     tint = GreenPrimary,
-                    modifier = Modifier.size(54.dp)
+                    modifier = Modifier.size(56.dp)
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -94,35 +90,36 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
                 Text(
                     text = "Synchronize Shop Data",
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
-                    text = "Merge independent transactions recorded on Boss & Employee phones directly via Wi-Fi/Bluetooth without internet.",
+                    text = "Merge credit entries recorded on Boss and Employee phones directly via Wi-Fi/Bluetooth.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.DarkGray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Button(
                         onClick = { p2pManager.startAdvertising() },
                         colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
-                        modifier = Modifier.weight(1f).height(50.dp)
+                        modifier = Modifier.fillMaxWidth().height(54.dp)
                     ) {
-                        Text("Boss Mode (Advertise)")
+                        Text("Boss Mode (Advertise)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                     Button(
                         onClick = { p2pManager.startDiscovery() },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                        modifier = Modifier.weight(1f).height(50.dp)
+                        modifier = Modifier.fillMaxWidth().height(54.dp)
                     ) {
-                        Text("Employee (Search)")
+                        Text("Employee Mode (Search)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -134,7 +131,8 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
         Text(
             text = "Sync Status",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -146,16 +144,16 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
             Column(modifier = Modifier.padding(16.dp)) {
                 when (val state = syncState) {
                     is SyncState.Idle -> {
-                        Text("Status: Ready to Sync", fontWeight = FontWeight.SemiBold)
-                        Text("Choose Boss Mode or Employee Search above.", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text("Status: Ready to Sync", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Select Boss Mode or Employee Mode above.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     }
                     is SyncState.Advertising -> {
                         Text("Status: Boss Device Advertising...", fontWeight = FontWeight.Bold, color = GreenPrimary)
-                        Text("Waiting for employee device to search and connect.", style = MaterialTheme.typography.bodySmall)
+                        Text("Waiting for employee device to search and connect.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                     }
                     is SyncState.Discovering -> {
                         Text("Status: Searching for Boss Device...", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                        Text("Bring phone close to Boss phone.", style = MaterialTheme.typography.bodySmall)
+                        Text("Bring phone close to Boss phone.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                     }
                     is SyncState.DeviceDiscovered -> {
                         Row(
@@ -163,9 +161,9 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column {
-                                Text("Found Device: ${state.deviceName}", fontWeight = FontWeight.Bold)
-                                Text("Tap Sync to request pair", style = MaterialTheme.typography.bodySmall)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Found Device: ${state.deviceName}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                Text("Tap Sync to connect", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                             }
                             Button(
                                 onClick = {
@@ -174,7 +172,7 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary)
                             ) {
-                                Text("Connect & Sync")
+                                Text("Sync Now")
                             }
                         }
                     }
@@ -189,7 +187,7 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
                         }
                     }
                     is SyncState.Error -> {
-                        Text("⚠️ Sync Error: ${state.message}", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        Text("⚠️ ${state.message}", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                     }
                     else -> {}
                 }
@@ -213,8 +211,7 @@ fun DeviceSyncScreen(viewModel: MainViewModel) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "This will exchange and merge new customer, product, and credit entries between both phones.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.DarkGray
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             },

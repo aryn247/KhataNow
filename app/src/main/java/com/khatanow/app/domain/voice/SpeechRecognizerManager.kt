@@ -8,7 +8,6 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import java.util.Locale
 
 sealed class SpeechState {
     object Idle : SpeechState()
@@ -30,72 +29,74 @@ class SpeechRecognizerManager(private val context: Context) {
 
     fun startListening(languageCode: String = "hi-IN") {
         if (!isAvailable()) {
-            _speechState.value = SpeechState.Error("Speech recognition unavailable on this device.")
+            _speechState.value = SpeechState.Error("Speech recognition is not available on this device.")
             return
         }
 
         stopListening()
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    _speechState.value = SpeechState.Listening
-                }
-
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-
-                override fun onError(error: Int) {
-                    val errorMessage = when (error) {
-                        SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                        SpeechRecognizer.ERROR_CLIENT -> "Client error"
-                        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
-                        SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout - try manual entry"
-                        SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized. Please try again."
-                        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Speech service busy"
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected"
-                        else -> "Speech recognition error ($error)"
-                    }
-                    _speechState.value = SpeechState.Error(errorMessage)
-                }
-
-                override fun onResults(results: Bundle?) {
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val topMatch = matches?.firstOrNull() ?: ""
-                    if (topMatch.isNotEmpty()) {
-                        _speechState.value = SpeechState.FinalResult(topMatch)
-                    } else {
-                        _speechState.value = SpeechState.Error("No speech recognized.")
-                    }
-                }
-
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val partialText = matches?.firstOrNull() ?: ""
-                    if (partialText.isNotEmpty()) {
-                        _speechState.value = SpeechState.PartialResult(partialText)
-                    }
-                }
-
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
-        }
-
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageCode)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageCode)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-        }
-
         try {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
+                setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {
+                        _speechState.value = SpeechState.Listening
+                    }
+
+                    override fun onBeginningOfSpeech() {
+                        _speechState.value = SpeechState.Listening
+                    }
+
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+
+                    override fun onError(error: Int) {
+                        val errorMessage = when (error) {
+                            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
+                            SpeechRecognizer.ERROR_CLIENT -> "Client error"
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Microphone permission required"
+                            SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network error. Please check connection or try manual entry."
+                            SpeechRecognizer.ERROR_NO_MATCH -> "No speech recognized. Please tap mic and try again."
+                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Speech recognizer busy. Restarting..."
+                            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech detected. Tap mic to speak."
+                            else -> "Voice recognition error ($error)"
+                        }
+                        _speechState.value = SpeechState.Error(errorMessage)
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val topMatch = matches?.firstOrNull() ?: ""
+                        if (topMatch.isNotEmpty()) {
+                            _speechState.value = SpeechState.FinalResult(topMatch)
+                        } else {
+                            _speechState.value = SpeechState.Error("No speech recognized.")
+                        }
+                    }
+
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        val partialText = matches?.firstOrNull() ?: ""
+                        if (partialText.isNotEmpty()) {
+                            _speechState.value = SpeechState.PartialResult(partialText)
+                        }
+                    }
+
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+            }
+
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageCode)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageCode)
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+            }
+
             speechRecognizer?.startListening(intent)
         } catch (e: Exception) {
-            _speechState.value = SpeechState.Error("Failed to start speech recognizer: ${e.localizedMessage}")
+            _speechState.value = SpeechState.Error("Could not start microphone: ${e.localizedMessage}")
         }
     }
 

@@ -125,7 +125,7 @@ fun VoiceRecordDialog(
                             PulsingMicIcon()
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = if (currentLanguage == AppLanguage.HINDI) "बोलिए (उदा: गुणगुण 5 चिप्स)..." else "Speak now (e.g., Gungun 5 chips)...",
+                                text = if (currentLanguage == AppLanguage.HINDI) "बोलिए..." else "Listening... Speak now",
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = GreenPrimary,
@@ -162,7 +162,7 @@ fun VoiceRecordDialog(
                         }
                     }
                 } else {
-                    // Parsed Confirmation Mode with Auto-Create capability!
+                    // Parsed Confirmation Mode with Auto-Create capability
                     ConfirmationCardContent(
                         parseResult = parseResult,
                         allCustomers = customers,
@@ -262,13 +262,13 @@ fun ConfirmationCardContent(
                         OutlinedTextField(
                             value = candidateCustomerName,
                             onValueChange = { candidateCustomerName = it },
-                            label = { Text("New Customer Name") },
+                            label = { Text("Customer Name") },
                             singleLine = true,
                             modifier = Modifier.weight(1f)
                         )
                     }
                     Text(
-                        text = "✨ Will auto-save to customer directory",
+                        text = "✨ Auto-saves to customer list",
                         style = MaterialTheme.typography.bodySmall,
                         color = GreenPrimary,
                         modifier = Modifier.padding(top = 2.dp)
@@ -293,13 +293,13 @@ fun ConfirmationCardContent(
                         OutlinedTextField(
                             value = candidateProductName,
                             onValueChange = { candidateProductName = it },
-                            label = { Text("New Product Name") },
+                            label = { Text("Product Name") },
                             singleLine = true,
                             modifier = Modifier.weight(1f)
                         )
                     }
                     Text(
-                        text = "✨ Will auto-save to product inventory",
+                        text = "✨ Auto-saves to product list",
                         style = MaterialTheme.typography.bodySmall,
                         color = GreenPrimary,
                         modifier = Modifier.padding(top = 2.dp)

@@ -1,8 +1,5 @@
 package com.khatanow.app.ui.screens.settings
 
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,18 +12,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -37,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,9 +42,7 @@ import com.khatanow.app.util.AppLanguage
 
 @Composable
 fun SettingsScreen(viewModel: MainViewModel) {
-    val context = LocalContext.current
     val currentLanguage by viewModel.currentLanguage.collectAsState()
-    val updateInfo by viewModel.updateInfo.collectAsState()
     var showShareModal by remember { mutableStateOf(false) }
 
     Column(
@@ -60,55 +53,60 @@ fun SettingsScreen(viewModel: MainViewModel) {
         Text(
             text = if (currentLanguage == AppLanguage.HINDI) "ऐप सेटिंग्स (Settings)" else "App Settings",
             style = MaterialTheme.typography.headlineMedium,
-            color = GreenPrimary
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Language Switcher Card
+        // Language Switcher Card with high contrast and proper button sizing
         Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Language, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(32.dp))
-                    Column(modifier = Modifier.padding(start = 12.dp)) {
-                        Text(
-                            text = if (currentLanguage == AppLanguage.HINDI) "भाषा (App Language)" else "App Language",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = currentLanguage.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray
-                        )
-                    }
+                    Icon(Icons.Default.Language, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (currentLanguage == AppLanguage.HINDI) "भाषा (Language)" else "App Language",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                 }
+                
+                Spacer(modifier = Modifier.height(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     Button(
                         onClick = { viewModel.setAppLanguage(AppLanguage.ENGLISH) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentLanguage == AppLanguage.ENGLISH) GreenPrimary else Color.LightGray
-                        )
+                            containerColor = if (currentLanguage == AppLanguage.ENGLISH) GreenPrimary else MaterialTheme.colorScheme.surface
+                        ),
+                        modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text("English")
+                        Text(
+                            "English",
+                            fontWeight = FontWeight.Bold,
+                            color = if (currentLanguage == AppLanguage.ENGLISH) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     Button(
                         onClick = { viewModel.setAppLanguage(AppLanguage.HINDI) },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (currentLanguage == AppLanguage.HINDI) GreenPrimary else Color.LightGray
-                        )
+                            containerColor = if (currentLanguage == AppLanguage.HINDI) GreenPrimary else MaterialTheme.colorScheme.surface
+                        ),
+                        modifier = Modifier.weight(1f).height(48.dp)
                     ) {
-                        Text("हिंदी")
+                        Text(
+                            "हिंदी",
+                            fontWeight = FontWeight.Bold,
+                            color = if (currentLanguage == AppLanguage.HINDI) Color.White else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -134,11 +132,12 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     modifier = Modifier.size(32.dp)
                 )
                 Column(modifier = Modifier.padding(start = 12.dp)) {
-                    Text("Local Device ID", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text("Local Device ID", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Text(
                         text = viewModel.deviceId,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -155,19 +154,20 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 Text(
                     text = if (currentLanguage == AppLanguage.HINDI) "दूसरों को ऐप शेयर करें (Share App)" else "Share App with Employees / Friends",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Generate a download QR code to install KhataNow on another shop phone.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = { showShareModal = true },
                     colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
                     Icon(Icons.Default.QrCode, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
