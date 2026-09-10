@@ -70,8 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
-            // Checks for updates against currentVersionCode = 1 (triggers v1.0.1 notification)
-            UpdateChecker.checkForUpdates(application, currentVersionCode = 1)
+            UpdateChecker.checkForUpdates(application)
         }
     }
 

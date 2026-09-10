@@ -31,9 +31,24 @@ object UpdateChecker {
     private val _updateState = MutableStateFlow<UpdateInfo?>(null)
     val updateState: StateFlow<UpdateInfo?> = _updateState
 
-    suspend fun checkForUpdates(context: Context, currentVersionCode: Int = 1) {
+    fun getInstalledVersionCode(context: Context): Int {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                pInfo.longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                pInfo.versionCode
+            }
+        } catch (e: Exception) {
+            1
+        }
+    }
+
+    suspend fun checkForUpdates(context: Context) {
         withContext(Dispatchers.IO) {
             try {
+                val currentVersionCode = getInstalledVersionCode(context)
                 val url = URL(VERSION_URL)
                 val connection = url.openConnection() as HttpURLConnection
                 connection.connectTimeout = 3000
